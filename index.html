@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+ <html lang="zh-CN">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>幸运抽奖 </title>
+     <style>
+         * {
+             margin: 0;
+             padding: 0;
+             box-sizing: border-box;
+             font-family: "Microsoft YaHei", sans-serif;
+         }
+         body {
+             min-height: 100vh;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+             padding: 20px;
+             background: #0f1118;
+             overflow: hidden;
+             position: relative;
+         }
+         /* 粒子背景容器 */
+         #particleContainer {
+             position: absolute;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             z-index: 0;
+         }
+         .container {
+             background: rgba(15, 17, 24, 0.8);
+             border-radius: 20px;
+             box-shadow: 0 0 50px rgba(66, 153, 225, 0.3), 0 0 20px rgba(159, 122, 234, 0.2);
+             padding: 50px 30px;
+             width: 100%;
+             max-width: 600px;
+             text-align: center;
+             border: 1px solid rgba(255, 255, 255, 0.1);
+             backdrop-filter: blur(10px);
+             z-index: 1;
+         }
+         h1 {
+             font-size: 36px;
+             font-weight: 700;
+             margin-bottom: 15px;
+             background: linear-gradient(90deg, #4299e1, #9f7aea, #38b2ac, #ed8936);
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+             background-size: 200% auto;
+             animation: textGradient 3s linear infinite;
+         }
+         @keyframes textGradient {
+             to { background-position: 200% center; }
+         }
+         .subtitle {
+             color: #a0aec0;
+             font-size: 17px;
+             margin-bottom: 40px;
+             text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+         }
+         .prize-box {
+             background: rgba(255, 255, 255, 0.03);
+             border-radius: 16px;
+             padding: 50px 20px;
+             margin-bottom: 40px;
+             min-height: 200px;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+             position: relative;
+             overflow: hidden;
+         }
+         /* 霓虹边框动画 */
+         .prize-box::before {
+             content: "";
+             position: absolute;
+             top: -2px;
+             left: -2px;
+             right: -2px;
+             bottom: -2px;
+             background: linear-gradient(45deg, #4299e1, #9f7aea, #38b2ac, #ed8936, #e53e3e);
+             background-size: 400% 400%;
+             border-radius: 18px;
+             z-index: -1;
+             animation: borderGlow 8s linear infinite;
+             opacity: 0;
+         }
+         .prize-box.active::before {
+             opacity: 1;
+         }
+         @keyframes borderGlow {
+             0% { background-position: 0% 50%; }
+             50% { background-position: 100% 50%; }
+             100% { background-position: 0% 50%; }
+         }
+         /* 抽奖中背景动态光效 */
+         .prize-box.active {
+             animation: bgGlow 0.03s infinite alternate;
+         }
+         @keyframes bgGlow {
+             0% { background: rgba(66, 153, 225, 0.08); }
+             20% { background: rgba(159, 122, 234, 0.08); }
+             40% { background: rgba(56, 178, 172, 0.08); }
+             60% { background: rgba(237, 137, 54, 0.08); }
+             80% { background: rgba(229, 62, 62, 0.08); }
+             100% { background: rgba(139, 92, 246, 0.08); }
+         }
+         .prize-level {
+             font-size: 32px;
+             font-weight: 800;
+             margin-bottom: 20px;
+             text-shadow: 0 0 15px currentColor;
+             letter-spacing: 2px;
+         }
+         /* 不同奖项霓虹光效 */
+         .prize-level.special { 
+             color: #ff4d6d; 
+             animation: specialGlow 1.5s ease infinite alternate;
+         }
+         @keyframes specialGlow {
+             to { text-shadow: 0 0 25px #ff4d6d, 0 0 5px #fff; }
+         }
+         .prize-level.first { 
+             color: #ffb703; 
+             animation: firstGlow 1.5s ease infinite alternate;
+         }
+         @keyframes firstGlow {
+             to { text-shadow: 0 0 25px #ffb703, 0 0 5px #fff; }
+         }
+         .prize-level.second { 
+             color: #4cc9f0; 
+             animation: secondGlow 1.5s ease infinite alternate;
+         }
+         @keyframes secondGlow {
+             to { text-shadow: 0 0 25px #4cc9f0, 0 0 5px #fff; }
+         }
+         .prize-content {
+             color: #e2e8f0;
+             font-size: 20px;
+             line-height: 1.8;
+             display: none;
+             padding: 0 15px;
+             max-width: 500px;
+             text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+         }
+         .prize-content.show {
+             display: block;
+             animation: fadeInUp 0.6s ease forwards;
+         }
+         @keyframes fadeInUp {
+             from { opacity: 0; transform: translateY(20px); }
+             to { opacity: 1; transform: translateY(0); }
+         }
+         .btn-group {
+             display: flex;
+             gap: 25px;
+             justify-content: center;
+             flex-wrap: wrap;
+         }
+         .btn {
+             background: linear-gradient(135deg, #4299e1 0%, #9f7aea 100%);
+             color: #fff;
+             border: none;
+             border-radius: 50px;
+             padding: 16px 40px;
+             font-size: 19px;
+             font-weight: 600;
+             cursor: pointer;
+             transition: all 0.3s ease;
+             outline: none;
+             box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+             position: relative;
+             overflow: hidden;
+         }
+         /* 按钮hover光效 */
+         .btn::after {
+             content: "";
+             position: absolute;
+             top: -50%;
+             left: -50%;
+             width: 200%;
+             height: 200%;
+             background: linear-gradient(
+                 to right,
+                 rgba(255, 255, 255, 0) 0%,
+                 rgba(255, 255, 255, 0.3) 50%,
+                 rgba(255, 255, 255, 0) 100%
+             );
+             transform: rotate(30deg);
+             animation: btnShine 3s ease infinite;
+         }
+         @keyframes btnShine {
+             0% { transform: rotate(30deg) translateX(-100%); }
+             100% { transform: rotate(30deg) translateX(100%); }
+         }
+         .btn:hover {
+             transform: translateY(-5px);
+             box-shadow: 0 8px 25px rgba(66, 153, 225, 0.4);
+         }
+         .btn:disabled {
+             background: #374151;
+             cursor: not-allowed;
+             transform: none;
+             box-shadow: none;
+             opacity: 0.6;
+         }
+         .btn:disabled::after {
+             animation: none;
+         }
+         .view-btn {
+             background: linear-gradient(135deg, #38b2ac 0%, #4cc9f0 100%);
+             box-shadow: 0 4px 15px rgba(56, 178, 172, 0.3);
+         }
+         .view-btn:hover {
+             box-shadow: 0 8px 25px rgba(56, 178, 172, 0.4);
+         }
+         .init-tip {
+             color: #a0aec0;
+             font-size: 20px;
+             text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+         }
+         /* 响应式样式 */
+         @media (max-width: 768px) {
+             h1 {
+                 font-size: 30px;
+             }
+             .prize-level {
+                 font-size: 28px;
+             }
+             .prize-content {
+                 font-size: 18px;
+             }
+             .btn {
+                 padding: 14px 30px;
+                 font-size: 17px;
+             }
+             .prize-box {
+                 padding: 40px 15px;
+                 min-height: 180px;
+             }
+         }
+     </style>
+ </head>
+ <body>
+     <!-- 粒子背景容器 -->
+     <div id="particleContainer"></div>
+     <div class="container">
+         <h1>幸运抽奖</h1>
+         <p class="subtitle">抽奖→ 查看 → 好运不断</p>
+         <div class="prize-box" id="prizeBox">
+             <div class="init-tip">等待抽奖，愿好运与你不期而遇～</div>
+             <div class="prize-level" id="prizeLevel"></div>
+             <div class="prize-content" id="prizeContent"></div>
+         </div>
+         <div class="btn-group">
+             <button class="btn" id="drawBtn">开始抽奖</button>
+             <button class="btn view-btn" id="viewBtn" disabled>查看奖品</button>
+         </div>
+     </div>
+     <script>
+         // 1. 粒子背景效果
+         (function createParticles() {
+             const container = document.getElementById('particleContainer');
+             const particleCount = 50;
+             
+             for (let i = 0; i < particleCount; i++) {
+                 const particle = document.createElement('div');
+                 // 随机粒子大小、位置、颜色
+                 const size = Math.random() * 3 + 1;
+                 const x = Math.random() * 100;
+                 const y = Math.random() * 100;
+                 const color = ['#4299e1', '#9f7aea', '#38b2ac', '#ed8936', '#e53e3e'][Math.floor(Math.random() * 5)];
+                 const duration = Math.random() * 20 + 10; // 移动周期
+                 
+                 particle.style.cssText = `
+                     position: absolute;
+                     width: ${size}px;
+                     height: ${size}px;
+                     background: ${color};
+                     border-radius: 50%;
+                     top: ${y}%;
+                     left: ${x}%;
+                     opacity: 0.6;
+                     animation: particleMove ${duration}s linear infinite;
+                 `;
+                 
+                 container.appendChild(particle);
+             }
+             
+             // 粒子移动动画
+             const style = document.createElement('style');
+         style.textContent = `
+                 @keyframes particleMove {
+                     0% { transform: translate(0, 0); }
+                     25% { transform: translate(10px, -10px); }
+                     50% { transform: translate(0, -20px); }
+                     75% { transform: translate(-10px, -10px); }
+                     100% { transform: translate(0, 0); }
+                 }
+             `;
+             document.head.appendChild(style);
+         })();
+         // 2. 奖品池：50条问候语，特/一/二等奖比例2:8:40
+         const prizes = [
+             // 特等奖（2条）
+             { level: "特等奖", levelClass: "special", content: "恭喜！愿你全年无烦恼，三餐皆美味，身边有温暖，心中有热爱，所求皆如愿，所行皆坦途，每一个平凡日子都闪着光！" },
+             { level: "特等奖", levelClass: "special", content: "天选好运！愿你被幸运之神眷顾，事业蒸蒸日上，生活甜甜蜜蜜，家人安康顺遂，朋友常伴左右，快乐永不打烊！" },
+             // 一等奖（8条）
+             { level: "一等奖", levelClass: "first", content: "生活偶尔有风雨，但请相信，风雨过后必有彩虹，愿你保持热爱，奔赴下一场山海，活成自己喜欢的模样！" },
+             { level: "一等奖", levelClass: "first", content: "新的日子，愿你被阳光包围，被好运眷顾，工作顺利不加班，生活甜蜜没烦恼，每天都有小惊喜找上门！" },
+             { level: "一等奖", levelClass: "first", content: "不必追赶别人的节奏，按自己的步调慢慢来，你值得所有美好的一切，愿你温柔待自己，也被世界温柔以待！" },
+             { level: "一等奖", levelClass: "first", content: "愿你身边有良人相伴，睡前有好梦，醒来有期待，四季平安，喜乐常伴，三餐四季都充满烟火气与幸福感！" },
+             { level: "一等奖", levelClass: "first", content: "人生没有白走的路，每一步都算数，愿你不负时光，不负自己，在成长的路上收获满满，未来可期！" },
+             { level: "一等奖", levelClass: "first", content: "愿你眼底有星光，心中有梦想，脚下有力量，一步步走向属于自己的辉煌，活成一束光，照亮自己也温暖他人！" },
+             { level: "一等奖", levelClass: "first", content: "忙碌的日子也要记得好好爱自己，吃好每一顿饭，睡好每一觉，愿你在奔波中收获成长，在疲惫中找到慰藉！" },
+             { level: "一等奖", levelClass: "first", content: "愿你有前进一寸的勇气，也有后退一尺的从容，生活自在，随心而行，不慌不忙，慢慢发光！" },
+       
+            // 二等奖（40条）
+            { level: "二等奖", levelClass: "second", content: "今天也要元气满满呀！记得吃早餐，照顾好自己，健康平安才是最大的财富，愿你天天开心，笑容常在！" },
+            { level: "二等奖", levelClass: "second", content: "愿你被世界温柔以待，不慌不忙，慢慢成长，在自己的节奏里闪闪发光，活成独一无二的自己！" },
+            { level: "二等奖", levelClass: "second", content: "烦恼就像乌云，总会散去，阳光总会到来，愿你放下焦虑，拥抱快乐，每一天都充满希望与温暖！" },
+            { level: "二等奖", levelClass: "second", content: "忙碌的日子也要记得放松，喝杯热茶，听首好歌，给生活留一点惬意的空间，愿你劳逸结合，收获满满！" },
+            { level: "二等奖", levelClass: "second", content: "愿你好运连连，事事顺心，无论是工作还是生活，都能顺风顺水，一路畅通，幸福感爆棚！" },
+            { level: "二等奖", levelClass: "second", content: "天气多变，记得添衣保暖，别感冒啦！愿你身体康健，心情愉悦，每天都有好心情相伴！" },
+            { level: "二等奖", levelClass: "second", content: "每一个平凡的日子都值得珍惜，愿你在平凡中发现美好，在努力中收获成长，生活越来越精彩！" },
+            { level: "二等奖", levelClass: "second", content: "愿你有前进的勇气，也有后退的从容，生活自在随心，不慌不忙，慢慢活成自己喜欢的样子！" },
+            { level: "二等奖", levelClass: "second", content: "新的一天，新的开始，愿你抛开所有烦恼，带着好心情，迎接每一个崭新的瞬间，未来可期！" },
+            { level: "二等奖", levelClass: "second", content: "朋友不在多，真心就好；日子不在富，快乐就好，愿你身边有真心朋友，生活充满快乐与温暖！" },
+            { level: "二等奖", levelClass: "second", content: "愿你眼底有星光，心中有梦想，脚下有力量，一步步走向属于自己的辉煌，未来闪闪发光！" },
+            { level: "二等奖", levelClass: "second", content: "偶尔的疲惫是为了更好的前行，记得休息，养足精神，愿你在奔波中收获成长，在疲惫中找到慰藉！" },
+            { level: "二等奖", levelClass: "second", content: "愿你三餐四季，温暖有趣，家人安康顺遂，朋友常伴左右，生活充满烟火气与幸福感！" },
+            { level: "二等奖", levelClass: "second", content: "别焦虑，别迷茫，你走过的每一步都算数，愿你不负时光，不负自己，未来越来越好！" },
+            { level: "二等奖", levelClass: "second", content: "愿你每天都能感受到生活的小确幸，一杯奶茶，一本好书，一个微笑，都是幸福的模样！" },
+            { level: "二等奖", levelClass: "second", content: "生活难免有坎坷，只要勇敢面对，就没有跨不过去的坎，愿你勇往直前，无所畏惧，收获成功！" },
+            { level: "二等奖", levelClass: "second", content: "愿你被幸运包围，被快乐眷顾，每天都有新惊喜，生活甜甜蜜蜜，幸福美满！" },
+            { level: "二等奖", levelClass: "second", content: "记得好好爱自己，不辜负自己，不委屈自己，愿你温柔待自己，也被世界温柔以待！" },
+            { level: "二等奖", levelClass: "second", content: "愿你事业顺利，步步高升，生活甜蜜，幸福美满，家人安康，喜乐常伴！" },
+            { level: "二等奖", levelClass: "second", content: "新的季节，新的希望，愿你在新的时光里，收获成长，收获快乐，收获所有美好！" },
+            { level: "二等奖", levelClass: "second", content: "烦恼随风而去，快乐如期而至，愿你放下所有不愉快，拥抱属于自己的快乐与幸福！" },
+            { level: "二等奖", levelClass: "second", content: "愿你有说走就走的勇气，也有安稳度日的从容，生活既有诗和远方，也有烟火气与温暖！" },
+            { level: "二等奖", levelClass: "second", content: "每天给自己一个微笑，给生活一份热爱，愿你天天开心，生活越来越精彩！" },
+            { level: "二等奖", levelClass: "second", content: "愿你身边的人都温柔善良，生活中的事都顺顺利利，每一天都充满阳光与温暖！" },
+            { level: "二等奖", levelClass: "second", content: "努力不一定会立刻有回报，但坚持一定会有收获，愿你坚持不懈，终将实现自己的梦想！" },
+            { level: "二等奖", levelClass: "second", content: "愿你睡好每一觉，吃好每一顿饭，照顾好自己的身体，这才是一切美好的开始！" },
+            { level: "二等奖", levelClass: "second", content: "生活就像一杯茶，慢慢品，才能尝到其中的甘甜，愿你细细品味生活，收获满满幸福！" },
+            { level: "二等奖", levelClass: "second", content: "愿你不被生活打败，不向困难低头，勇敢做自己，活成一束光，照亮自己也温暖他人！" },
+            { level: "二等奖", levelClass: "second", content: "新的一周，新的开始，愿你带着好心情，迎接新的挑战，收获新的成长与快乐！" },
+            { level: "二等奖", levelClass: "second", content: "愿你好运常伴，喜事连连，生活中的每一天都充满惊喜与感动，幸福美满！" },
+            { level: "二等奖", levelClass: "second", content: "记得多陪伴家人，多联系朋友，亲情与友情是生活中最珍贵的财富，愿你珍惜身边人！" },
+            { level: "二等奖", levelClass: "second", content: "愿你在成长的路上，不慌不忙，循序渐进，一步步成为更好的自己，未来可期！" },
+            { level: "二等奖", levelClass: "second", content: "生活中的小美好，需要用心去发现，愿你拥有一双发现美的眼睛，每天都有新惊喜！" },
+            { level: "二等奖", levelClass: "second", content: "愿你工作顺利，不加班不熬夜，生活甜蜜，没烦恼没忧愁，每天都开开心心！" },
+            { level: "二等奖", levelClass: "second", content: "勇敢去追求自己喜欢的东西，去做自己想做的事，愿你不负韶华，不负自己！" },
+            { level: "二等奖", levelClass: "second", content: "愿你被世界温柔以待，所有的美好都如期而至，所有的遗憾都随风而去！" },
+            { level: "二等奖", levelClass: "second", content: "每天给自己一点鼓励，给自己一点信心，愿你越来越优秀，越来越强大！" },
+            { level: "二等奖", levelClass: "second", content: "愿你三餐规律，作息正常，身体康健，心情愉悦，生活越来越有滋味！" },
+            { level: "二等奖", levelClass: "second", content: "生活难免有不如意，只要心态好，一切都会好起来，愿你保持积极乐观，笑对人生！" },
+            { level: "二等奖", levelClass: "second", content: "愿你身边有良人相伴，脚下有路可走，心中有梦可追，生活有暖可依！" },
+            { level: "二等奖", levelClass: "second", content: "新的一年，新的气象，愿你告别过去的遗憾，迎接崭新的未来，收获满满美好！" }
+        ];
+
+        const prizeBox = document.getElementById("prizeBox");
+        const prizeLevel = document.getElementById("prizeLevel");
+        const prizeContent = document.getElementById("prizeContent");
+        const drawBtn = document.getElementById("drawBtn");
+        const viewBtn = document.getElementById("viewBtn");
+        const initTip = prizeBox.querySelector(".init-tip");
+        
+        let isDrawing = false;
+        let currentPrize = null;
+        let hasViewed = true;
+
+        drawBtn.addEventListener("click", () => {
+            if (isDrawing || !hasViewed) return;
+
+            isDrawing = true;
+            drawBtn.disabled = true;
+            drawBtn.textContent = "抽奖中...";
+            viewBtn.disabled = true;
+            prizeContent.classList.remove("show");
+            prizeLevel.className = "prize-level";
+            initTip.style.display = "none";
+            prizeBox.classList.add("active");
+
+            // 核心优化：动画间隔缩至20ms，肉眼完全无法看清奖项文字
+            const animateDuration = 2000;
+            const interval = 20; // 关键调整：20毫秒极速切换，悬念拉满
+            let count = 0;
+            const maxCount = animateDuration / interval;
+
+            const animateTimer = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * prizes.length);
+                const randomPrize = prizes[randomIndex];
+                prizeLevel.textContent = randomPrize.level;
+                prizeLevel.className = `prize-level ${randomPrize.levelClass}`;
+                count++;
+
+                if (count >= maxCount) {
+                    clearInterval(animateTimer);
+                    currentPrize = prizes[Math.floor(Math.random() * prizes.length)];
+                    prizeLevel.textContent = currentPrize.level;
+                    prizeLevel.className = `prize-level ${currentPrize.levelClass}`;
+                    isDrawing = false;
+                    drawBtn.disabled = false;
+                    viewBtn.disabled = false;
+                    prizeBox.classList.remove("active");
+                    hasViewed = false;
+                }
+            }, interval);
+        });
+
+        viewBtn.addEventListener("click", () => {
+            if (!currentPrize) return;
+            prizeContent.textContent = currentPrize.content;
+            prizeContent.classList.add("show");
+            viewBtn.disabled = true;
+            hasViewed = true;
+            drawBtn.textContent = "再次抽奖";
+        });
+    </script>
+</body>
+</html>
